@@ -72,9 +72,9 @@
     </div>
 
     <script>
-        // 초기 지도 중심 (기본 좌표값 서울 중심)
+        // 초기 지도 설정 (기본 좌표값 서울 중심)
         var mapContainer = document.getElementById('map');
-        var mapOption = { center: new kakao.maps.LatLng(37.566826, 126.978656), level: 6 };
+        var mapOption = { center: new kakao.maps.LatLng(37.566826, 126.978656), level: 7 };
         var map = new kakao.maps.Map(mapContainer, mapOption);
 
         // 로드뷰 및 장소 검색 서비스 객체 정의
@@ -88,7 +88,7 @@
 
         var currentMarkers = []; // 현재 표시된 마커 리스트 배열
         var currentCategory = 'AT4'; // 초기 카테고리값
-        var userLocation = null; // 사용자의 실시간 좌표 저장 변수
+        var userLocation = new kakao.maps.LatLng(37.566826, 126.978656); // 기본 좌표 백업
 
         // 내 현재 위치 정보 얻어오기
         if (navigator.geolocation) {
@@ -97,7 +97,7 @@
                 var lon = position.coords.longitude;
                 userLocation = new kakao.maps.LatLng(lat, lon);
 
-                // 현재 위치 마커 생성 (구분을 위해 기본 핀 대신 심플 마커 생성 가능)
+                // 현재 위치 마커 생성
                 var myLocationMarker = new kakao.maps.Marker({
                     map: map,
                     position: userLocation
@@ -109,14 +109,12 @@
                 myLocationInfo.open(map, myLocationMarker);
                 
                 map.setCenter(userLocation); // 내 위치로 화면 이동
-                searchPlaces(currentCategory); // 내 위치 기준 가장 가까운 순 검색 시작
+                searchPlaces(currentCategory); // 위치 파악 후 검색 시작
             }, function() {
-                // GPS 정보 획득 실패 시 기본 지도 중심 기준으로 검색
-                userLocation = map.getCenter();
+                // 위치 동의 거부 시 기본 중심점으로 검색 진행
                 searchPlaces(currentCategory);
             });
         } else {
-            userLocation = map.getCenter();
             searchPlaces(currentCategory);
         }
 
@@ -137,22 +135,23 @@
             searchPlaces(categoryCode);
         }
 
-        // 카카오 API 전국 단위 장소 검색 함수
+        // 카카오 API 거리 순 정렬 및 범위 제한 해제 검색
         function searchPlaces(categoryCode) {
-            var searchOrigin = userLocation || map.getCenter(); // 기준점 정의
             var searchKeyword = categoryCode === 'AT4' ? '바다 해변' : '작은 카페';
 
-            // "주변에 조건에 맞는 장소가 없습니다" 방지를 위해 radius 조건 삭제 (전국 검색 활성화)
+            // radius 속성을 아예 제외하여 전국구로 범위를 무제한 확장
+            var searchOptions = {
+                location: userLocation,
+                sort: kakao.maps.services.SortBy.DISTANCE // 내 위치 기준 가장 가까운 순서 정렬 법칙 보장
+            };
+
             placeService.keywordSearch(searchKeyword, function(data, status) {
                 if (status === kakao.maps.services.Status.OK) {
                     displayResults(data);
                 } else {
                     document.getElementById('list-container').innerHTML = '<p style="text-align:center; color:#95a5a6; margin-top:30px; font-size:0.85rem;">안식처를 불러오는 데 실패했습니다.</p>';
                 }
-            }, {
-                location: searchOrigin,
-                sort: kakao.maps.services.SortBy.DISTANCE // ★ 핵심: 무조건 현재 위치에서 가장 가까운 순서대로 배치
-            });
+            }, searchOptions);
         }
 
         // 결과 화면 표시 및 디자인 렌더링
@@ -181,7 +180,6 @@
 
                 // 장소 선택 시 공통 동작 (팝업 + 지도이동 + 로드뷰)
                 function selectPlaceAction() {
-                    // 세련되게 다듬어진 인포윈도우 HTML 템플릿 적용
                     var popupContent = '<div class="custom-popup">' +
                                        '<div class="popup-title">' + place.place_name + '</div>' +
                                        '<span class="popup-address">' + (place.road_address_name || place.address_name) + '</span>' +
@@ -209,7 +207,7 @@
                 listItem.addEventListener('click', selectPlaceAction);
             });
 
-            // 마커들이 가깝고 먼 것을 한눈에 트래킹할 수 있도록 바운드 재조정
+            // 전체 마커 시야 트래킹 자동 범위 조정
             map.setBounds(mapBounds);
         }
 
