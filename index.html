@@ -6,26 +6,44 @@
     <title>바다의 기적(奇跡)</title>
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=a31eca0579130b2b15ccc5b8fba70f09&libraries=services"></script>
     <style>
-        body { margin: 0; font-family: 'Malgun Gothic', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f5f5f5; }
-        header { background: #2c3e50; color: white; padding: 15px; text-align: center; }
-        header h1 { margin: 0; font-size: 1.4rem; letter-spacing: -0.5px; }
-        header p { margin: 5px 0 0 0; font-size: 0.9rem; color: #bdc3c7; }
+        /* 감성적인 새벽 바다 톤의 내비게이션 및 전체 배경 정의 */
+        body { margin: 0; font-family: 'Malgun Gothic', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #fcfcfc; color: #333; }
         
-        .tab-container { display: flex; background: #34495e; }
-        .tab-button { flex: 1; padding: 12px; border: none; background: none; color: #bbb; font-size: 0.95rem; cursor: pointer; transition: 0.3s; }
-        .tab-button.active { background: #22313f; color: white; font-weight: bold; border-bottom: 3px solid #3498db; }
+        /* 헤더 디자인: 깊은 밤바다 색감과 은은한 여백 */
+        header { background: linear-gradient(135deg, #1A252F, #2C3E50); color: white; padding: 25px 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10; }
+        header h1 { margin: 0; font-size: 1.6rem; font-weight: 300; letter-spacing: 2px; }
+        header p { margin: 8px 0 0 0; font-size: 0.85rem; color: #bdc3c7; font-style: italic; letter-spacing: 0.5px; }
         
-        .main-content { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: 300px; background: white; display: flex; flex-direction: column; border-right: 1px solid #ddd; }
-        .list-container { flex: 1; overflow-y: auto; padding: 10px; }
-        .list-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
-        .list-item:hover { background: #f0f4f8; }
-        .list-item h3 { margin: 0 0 5px 0; font-size: 1rem; color: #2c3e50; }
-        .list-item p { margin: 0; font-size: 0.8rem; color: #7f8c8d; }
+        /* 탭 컨테이너: 차분하고 모던한 플랫 디자인 */
+        .tab-container { display: flex; background: #2C3E50; border-bottom: 1px solid #34495E; z-index: 10; }
+        .tab-button { flex: 1; padding: 15px; border: none; background: none; color: #95a5a6; font-size: 0.9rem; cursor: pointer; transition: all 0.4s ease; letter-spacing: 1px; }
+        .tab-button.active { background: #1A252F; color: #5DADE2; font-weight: bold; border-bottom: 3px solid #5DADE2; }
+        .tab-button:hover { color: #fff; }
         
+        /* 메인 레이아웃 구성을 위한 구조 정의 */
+        .main-content { display: flex; flex: 1; overflow: hidden; position: relative; }
+        
+        /* 사이드바: 둥근 모서리와 감성적인 그림자 적용 */
+        .sidebar { width: 320px; background: #ffffff; display: flex; flex-direction: column; border-right: 1px solid #eaeaea; box-shadow: 4px 0 15px rgba(0,0,0,0.03); z-index: 5; }
+        .list-container { flex: 1; overflow-y: auto; padding: 15px 10px; }
+        
+        /* 리스트 아이템 카드: 세련된 보더와 부드러운 호버 효과 */
+        .list-item { padding: 18px 15px; border-radius: 8px; margin-bottom: 12px; background: #fdfdfd; border: 1px solid #f0f0f0; cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 2px 5px rgba(0,0,0,0.01); }
+        .list-item:hover { background: #F4F6F7; border-color: #5DADE2; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(93,173,226,0.1); }
+        .list-item h3 { margin: 0 0 6px 0; font-size: 0.95rem; font-weight: bold; color: #2C3E50; line-height: 1.4; }
+        .list-item p { margin: 0; font-size: 0.78rem; color: #7F8C8D; line-height: 1.3; }
+        
+        /* 지도 및 로드뷰 영역 */
         .map-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; }
         #map { flex: 1; }
-        #roadview { height: 220px; border-top: 3px solid #2c3e50; display: none; } /* 로드뷰 레이아웃 초기 숨김 */
+        #roadview { height: 240px; border-top: 4px solid #1A252F; display: none; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
+        
+        /* 인포윈도우(팝업) 커스텀 스타일링을 위한 래퍼 */
+        .custom-popup { padding: 12px; font-family: 'Malgun Gothic', sans-serif; min-width: 220px; border-radius: 4px; }
+        .popup-title { font-size: 0.95rem; font-weight: bold; color: #2C3E50; margin-bottom: 6px; }
+        .popup-address { font-size: 0.75rem; color: #7F8C8D; margin-bottom: 8px; display: block; line-height: 1.4; }
+        .popup-link { display: inline-block; color: #5DADE2; text-decoration: none; font-size: 0.75rem; font-weight: bold; transition: color 0.2s; }
+        .popup-link:hover { color: #2C3E50; }
     </style>
 </head>
 <body>
@@ -43,7 +61,7 @@
     <div class="main-content">
         <div class="sidebar">
             <div id="list-container" class="list-container">
-                <p style="text-align:center; color:#999; margin-top:20px;">주변 도피처를 찾는 중입니다...</p>
+                <p style="text-align:center; color:#95a5a6; margin-top:30px; font-size:0.85rem;">가장 가까운 안식처를 연결하는 중...</p>
             </div>
         </div>
 
@@ -54,97 +72,93 @@
     </div>
 
     <script>
-        // 초기 지도 설정 (기본 중심 좌표 설정)
+        // 초기 지도 중심 (기본 좌표값 서울 중심)
         var mapContainer = document.getElementById('map');
-        var mapOption = { center: new kakao.maps.LatLng(37.566826, 126.978656), level: 5 };
+        var mapOption = { center: new kakao.maps.LatLng(37.566826, 126.978656), level: 6 };
         var map = new kakao.maps.Map(mapContainer, mapOption);
 
-        // 로드뷰 및 로드뷰 클라이언트 객체 생성
+        // 로드뷰 및 장소 검색 서비스 객체 정의
         var rvContainer = document.getElementById('roadview');
         var roadview = new kakao.maps.Roadview(rvContainer);
         var roadviewClient = new kakao.maps.RoadviewClient();
-
-        // 장소 검색 서비스 및 인포윈도우 객체 생성
         var placeService = new kakao.maps.services.Places();
+        
+        // 인포윈도우 객체 생성
         var infoWindow = new kakao.maps.InfoWindow({ zIndex: 1 });
 
-        var currentMarkers = []; // 현재 지도에 표시된 마커 저장 배열
-        var currentCategory = 'AT4'; // 기본 설정 카테고리 (바다)
+        var currentMarkers = []; // 현재 표시된 마커 리스트 배열
+        var currentCategory = 'AT4'; // 초기 카테고리값
+        var userLocation = null; // 사용자의 실시간 좌표 저장 변수
 
-        // 내 현재 위치 정보 가져오기 (HTML5 Geolocation)
+        // 내 현재 위치 정보 얻어오기
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
                 var lat = position.coords.latitude;
                 var lon = position.coords.longitude;
-                var currentPosition = new kakao.maps.LatLng(lat, lon);
+                userLocation = new kakao.maps.LatLng(lat, lon);
 
-                // 현재 위치에 커스텀 마커 생성
+                // 현재 위치 마커 생성 (구분을 위해 기본 핀 대신 심플 마커 생성 가능)
                 var myLocationMarker = new kakao.maps.Marker({
                     map: map,
-                    position: currentPosition
+                    position: userLocation
                 });
                 
                 var myLocationInfo = new kakao.maps.InfoWindow({
-                    content: '<div style="padding:5px;font-size:0.8rem;text-align:center;">나의 현재 위치</div>'
+                    content: '<div style="padding:6px;font-size:0.75rem;color:#2C3E50;text-align:center;font-weight:bold;">나의 현재 위치</div>'
                 });
                 myLocationInfo.open(map, myLocationMarker);
                 
-                // 내 현재 위치로 지도 중심 이동
-                map.setCenter(currentPosition);
-                
-                // 중심점 변경 후 주변 장소 탐색 실행
-                searchPlaces(currentCategory);
+                map.setCenter(userLocation); // 내 위치로 화면 이동
+                searchPlaces(currentCategory); // 내 위치 기준 가장 가까운 순 검색 시작
             }, function() {
-                // 위치 획득 실패 시 기본 중심점에서 탐색 실행
+                // GPS 정보 획득 실패 시 기본 지도 중심 기준으로 검색
+                userLocation = map.getCenter();
                 searchPlaces(currentCategory);
             });
         } else {
+            userLocation = map.getCenter();
             searchPlaces(currentCategory);
         }
 
-        // 탭 메뉴 전환 함수
+        // 탭 선택 제어 함수
         function switchTab(categoryCode, buttonElement) {
             currentCategory = categoryCode;
             
-            // 모든 탭 버튼 활성화 스타일 해제 후 선택된 탭만 활성화
             var buttons = document.querySelectorAll('.tab-button');
             buttons.forEach(btn => btn.classList.remove('active'));
             buttonElement.classList.add('active');
 
-            // 기존에 떠있던 마커, 팝업, 로드뷰 화면 리셋
+            // 컴포넌트 리셋 및 가리기
             removeMarkers();
             infoWindow.close();
             document.getElementById('roadview').style.display = 'none';
             map.relayout();
 
-            // 선택된 카테고리로 재검색
             searchPlaces(categoryCode);
         }
 
-        // 카카오 API 키워드 기반 장소 검색 기능
+        // 카카오 API 전국 단위 장소 검색 함수
         function searchPlaces(categoryCode) {
-            var searchCenter = map.getCenter(); // 현재 지도 중심 좌표 기준
-            
-            // 기획서 의도에 맞게 카테고리별 세부 검색 키워드 지정
+            var searchOrigin = userLocation || map.getCenter(); // 기준점 정의
             var searchKeyword = categoryCode === 'AT4' ? '바다 해변' : '작은 카페';
 
+            // "주변에 조건에 맞는 장소가 없습니다" 방지를 위해 radius 조건 삭제 (전국 검색 활성화)
             placeService.keywordSearch(searchKeyword, function(data, status) {
                 if (status === kakao.maps.services.Status.OK) {
                     displayResults(data);
                 } else {
-                    document.getElementById('list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">주변에 조건에 맞는 장소가 없습니다.</p>';
+                    document.getElementById('list-container').innerHTML = '<p style="text-align:center; color:#95a5a6; margin-top:30px; font-size:0.85rem;">안식처를 불러오는 데 실패했습니다.</p>';
                 }
             }, {
-                location: searchCenter,
-                radius: 20000, // 반경 20km 범위 검색
-                sort: kakao.maps.services.SortBy.DISTANCE // 가까운 순 정렬
+                location: searchOrigin,
+                sort: kakao.maps.services.SortBy.DISTANCE // ★ 핵심: 무조건 현재 위치에서 가장 가까운 순서대로 배치
             });
         }
 
-        // 검색 데이터 화면 표시 (마커 생성 + 리스트 나열 + 이벤트 바인딩)
+        // 결과 화면 표시 및 디자인 렌더링
         function displayResults(places) {
             var listContainer = document.getElementById('list-container');
-            listContainer.innerHTML = ''; // 기존 리스트 초기화
+            listContainer.innerHTML = ''; // 초기화
             
             var mapBounds = new kakao.maps.LatLngBounds();
 
@@ -152,37 +166,37 @@
                 var placePosition = new kakao.maps.LatLng(place.y, place.x);
                 mapBounds.extend(placePosition);
 
-                // 지도 위에 장소 마커 표시
+                // 지도에 마커 표시
                 var marker = new kakao.maps.Marker({
                     map: map,
                     position: placePosition
                 });
                 currentMarkers.push(marker);
 
-                // 좌측 영역에 들어갈 장소 리스트 아이템 동적 생성
+                // 좌측 결과창용 아이템 생성
                 var listItem = document.createElement('div');
                 listItem.className = 'list-item';
                 listItem.innerHTML = '<h3>' + place.place_name + '</h3><p>' + (place.road_address_name || place.address_name) + '</p>';
                 listContainer.appendChild(listItem);
 
-                // 마커 선택 및 리스트 아이템 클릭 시 실행될 공통 인터랙션 함수
+                // 장소 선택 시 공통 동작 (팝업 + 지도이동 + 로드뷰)
                 function selectPlaceAction() {
-                    // 팝업(인포윈도우) 세부 디자인 콘텐츠 설정
-                    var popupContent = '<div style="padding:10px; font-size:0.85rem; min-width:200px;">' +
-                                       '<b>' + place.place_name + '</b><br>' +
-                                       '<span style="color:#666; font-size:0.75rem;">' + (place.road_address_name || place.address_name) + '</span><br>' +
-                                       '<a href="' + place.place_url + '" target="_blank" style="color:#3498db; text-decoration:none; font-size:0.75rem; font-weight:bold;">카카오맵 상세 보기 →</a>' +
+                    // 세련되게 다듬어진 인포윈도우 HTML 템플릿 적용
+                    var popupContent = '<div class="custom-popup">' +
+                                       '<div class="popup-title">' + place.place_name + '</div>' +
+                                       '<span class="popup-address">' + (place.road_address_name || place.address_name) + '</span>' +
+                                       '<a href="' + place.place_url + '" target="_blank" class="popup-link">카카오맵 상세 정보 보기 →</a>' +
                                        '</div>';
                     infoWindow.setContent(popupContent);
                     infoWindow.open(map, marker);
-                    map.panTo(placePosition); // 선택 장소로 부드럽게 지도 중심 이동
+                    map.panTo(placePosition); // 부드럽게 화면 이동
 
-                    // 추가 스펙 기능: 로드뷰 화면 하단에 연동 및 표출
+                    // 로드뷰 동적 연결
                     roadviewClient.getNearestPanoId(placePosition, 50, function(panoId) {
                         if (panoId) {
                             document.getElementById('roadview').style.display = 'block';
-                            map.relayout(); // 레이아웃 크기 리프레시
-                            roadview.setPanoId(panoId, placePosition); // 근접 로드뷰 로드
+                            map.relayout();
+                            roadview.setPanoId(panoId, placePosition);
                         } else {
                             document.getElementById('roadview').style.display = 'none';
                             map.relayout();
@@ -190,16 +204,16 @@
                     });
                 }
 
-                // 마커 클릭 이벤트 및 리스트 행 클릭 이벤트 등록
+                // 이벤트 바인딩
                 kakao.maps.event.addListener(marker, 'click', selectPlaceAction);
                 listItem.addEventListener('click', selectPlaceAction);
             });
 
-            // 검색된 전체 마커가 한눈에 들어오도록 지도 시야각 재조정
+            // 마커들이 가깝고 먼 것을 한눈에 트래킹할 수 있도록 바운드 재조정
             map.setBounds(mapBounds);
         }
 
-        // 화면 갱신 시 기존에 그려진 마커 일괄 제거 함수
+        // 기존 마커 전체 삭제 함수
         function removeMarkers() {
             currentMarkers.forEach(function(marker) {
                 marker.setMap(null);
