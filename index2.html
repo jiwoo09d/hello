@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>바다의 기적(奇跡)</title>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=a31eca0579130b2b15ccc5b8fba70f09&libraries=services"></script>
+    <style>
+        body { margin: 0; font-family: 'Malgun Gothic', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f5f5f5; }
+        header { background: #2c3e50; color: white; padding: 15px; text-align: center; }
+        header h1 { margin: 0; font-size: 1.4rem; letter-spacing: -0.5px; }
+        header p { margin: 5px 0 0 0; font-size: 0.9rem; color: #bdc3c7; }
+        
+        .tab-container { display: flex; background: #34495e; }
+        .tab-button { flex: 1; padding: 12px; border: none; background: none; color: #bbb; font-size: 0.95rem; cursor: pointer; transition: 0.3s; }
+        .tab-button.active { background: #22313f; color: white; font-weight: bold; border-bottom: 3px solid #3498db; }
+        
+        .main-content { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 300px; background: white; display: flex; flex-direction: column; border-right: 1px solid #ddd; }
+        .list-container { flex: 1; overflow-y: auto; padding: 10px; }
+        .list-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
+        .list-item:hover { background: #f0f4f8; }
+        .list-item h3 { margin: 0 0 5px 0; font-size: 1rem; color: #2c3e50; }
+        .list-item p { margin: 0; font-size: 0.8rem; color: #7f8c8d; }
+        
+        .map-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; }
+        #map { flex: 1; }
+        #roadview { height: 220px; border-top: 3px solid #2c3e50; display: none; } /* 로드뷰 레이아웃 초기 숨김 */
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>『바다의 기적(奇跡)』</h1>
+        <p>"우리가 살아 있는 동안에는 어디든 바다가 가깝다." — 숨이 막혀올 때, 무작정 멈춰 선 곳</p>
+    </header>
+
+    <div class="tab-container">
+        <button class="tab-button active" onclick="switchTab('AT4', this)">🌊 오직 파도 소리만 들리는 바다</button>
+        <button class="tab-button" onclick="switchTab('CE7', this)">☕ 테이블 세 개, 작은 안식처</button>
+    </div>
+
+    <div class="main-content">
+        <div class="sidebar">
+            <div id="list-container" class="list-container">
+                <p style="text-align:center; color:#999; margin-top:20px;">주변 도피처를 찾는 중입니다...</p>
+            </div>
+        </div>
+
+        <div class="map-wrapper">
+            <div id="map"></div>
+            <div id="roadview"></div>
+        </div>
+    </div>
+
+    <script>
+        // 초기 지도 설정 (기본 중심 좌표 설정)
+        var mapContainer = document.getElementById('map');
+        var mapOption = { center: new kakao.maps.LatLng(37.566826, 126.978656), level: 5 };
+        var map = new kakao.maps.Map(mapContainer, mapOption);
+
+        // 로드뷰 및 로드뷰 클라이언트 객체 생성
+        var rvContainer = document.getElementById('roadview');
+        var roadview = new kakao.maps.Roadview(rvContainer);
+        var roadviewClient = new kakao.maps.RoadviewClient();
+
+        // 장소 검색 서비스 및 인포윈도우 객체 생성
+        var placeService = new kakao.maps.services.Places();
+        var infoWindow = new kakao.maps.InfoWindow({ zIndex: 1 });
+
+        var currentMarkers = []; // 현재 지도에 표시된 마커 저장 배열
+        var currentCategory = 'AT4'; // 기본 설정 카테고리 (바다)
+
+        // 내 현재 위치 정보 가져오기 (HTML5 Geolocation)
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var lat = position.coords.latitude;
+                var lon = position.coords.longitude;
+                var currentPosition = new kakao.maps.LatLng(lat, lon);
+
+                // 현재 위치에 커스텀 마커 생성
+                var myLocationMarker = new kakao.maps.Marker({
+                    map: map,
+                    position: currentPosition
+                });
+                
+                var myLocationInfo = new kakao.maps.InfoWindow({
+                    content: '<div style="padding:5px;font-size:0.8rem;text-align:center;">나의 현재 위치</div>'
+                });
+                myLocationInfo.open(map, myLocationMarker);
+                
+                // 내 현재 위치로 지도 중심 이동
+                map.setCenter(currentPosition);
+                
+                // 중심점 변경 후 주변 장소 탐색 실행
+                searchPlaces(currentCategory);
+            }, function() {
+                // 위치 획득 실패 시 기본 중심점에서 탐색 실행
+                searchPlaces(currentCategory);
+            });
+        } else {
+            searchPlaces(currentCategory);
+        }
+
+        // 탭 메뉴 전환 함수
+        function switchTab(categoryCode, buttonElement) {
+            currentCategory = categoryCode;
+            
+            // 모든 탭 버튼 활성화 스타일 해제 후 선택된 탭만 활성화
+            var buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            buttonElement.classList.add('active');
+
+            // 기존에 떠있던 마커, 팝업, 로드뷰 화면 리셋
+            removeMarkers();
+            infoWindow.close();
+            document.getElementById('roadview').style.display = 'none';
+            map.relayout();
+
+            // 선택된 카테고리로 재검색
+            searchPlaces(categoryCode);
+        }
+
+        // 카카오 API 키워드 기반 장소 검색 기능
+        function searchPlaces(categoryCode) {
+            var searchCenter = map.getCenter(); // 현재 지도 중심 좌표 기준
+            
+            // 기획서 의도에 맞게 카테고리별 세부 검색 키워드 지정
+            var searchKeyword = categoryCode === 'AT4' ? '바다 해변' : '작은 카페';
+
+            placeService.keywordSearch(searchKeyword, function(data, status) {
+                if (status === kakao.maps.services.Status.OK) {
+                    displayResults(data);
+                } else {
+                    document.getElementById('list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">주변에 조건에 맞는 장소가 없습니다.</p>';
+                }
+            }, {
+                location: searchCenter,
+                radius: 20000, // 반경 20km 범위 검색
+                sort: kakao.maps.services.SortBy.DISTANCE // 가까운 순 정렬
+            });
+        }
+
+        // 검색 데이터 화면 표시 (마커 생성 + 리스트 나열 + 이벤트 바인딩)
+        function displayResults(places) {
+            var listContainer = document.getElementById('list-container');
+            listContainer.innerHTML = ''; // 기존 리스트 초기화
+            
+            var mapBounds = new kakao.maps.LatLngBounds();
+
+            places.forEach(function(place) {
+                var placePosition = new kakao.maps.LatLng(place.y, place.x);
+                mapBounds.extend(placePosition);
+
+                // 지도 위에 장소 마커 표시
+                var marker = new kakao.maps.Marker({
+                    map: map,
+                    position: placePosition
+                });
+                currentMarkers.push(marker);
+
+                // 좌측 영역에 들어갈 장소 리스트 아이템 동적 생성
+                var listItem = document.createElement('div');
+                listItem.className = 'list-item';
+                listItem.innerHTML = '<h3>' + place.place_name + '</h3><p>' + (place.road_address_name || place.address_name) + '</p>';
+                listContainer.appendChild(listItem);
+
+                // 마커 선택 및 리스트 아이템 클릭 시 실행될 공통 인터랙션 함수
+                function selectPlaceAction() {
+                    // 팝업(인포윈도우) 세부 디자인 콘텐츠 설정
+                    var popupContent = '<div style="padding:10px; font-size:0.85rem; min-width:200px;">' +
+                                       '<b>' + place.place_name + '</b><br>' +
+                                       '<span style="color:#666; font-size:0.75rem;">' + (place.road_address_name || place.address_name) + '</span><br>' +
+                                       '<a href="' + place.place_url + '" target="_blank" style="color:#3498db; text-decoration:none; font-size:0.75rem; font-weight:bold;">카카오맵 상세 보기 →</a>' +
+                                       '</div>';
+                    infoWindow.setContent(popupContent);
+                    infoWindow.open(map, marker);
+                    map.panTo(placePosition); // 선택 장소로 부드럽게 지도 중심 이동
+
+                    // 추가 스펙 기능: 로드뷰 화면 하단에 연동 및 표출
+                    roadviewClient.getNearestPanoId(placePosition, 50, function(panoId) {
+                        if (panoId) {
+                            document.getElementById('roadview').style.display = 'block';
+                            map.relayout(); // 레이아웃 크기 리프레시
+                            roadview.setPanoId(panoId, placePosition); // 근접 로드뷰 로드
+                        } else {
+                            document.getElementById('roadview').style.display = 'none';
+                            map.relayout();
+                        }
+                    });
+                }
+
+                // 마커 클릭 이벤트 및 리스트 행 클릭 이벤트 등록
+                kakao.maps.event.addListener(marker, 'click', selectPlaceAction);
+                listItem.addEventListener('click', selectPlaceAction);
+            });
+
+            // 검색된 전체 마커가 한눈에 들어오도록 지도 시야각 재조정
+            map.setBounds(mapBounds);
+        }
+
+        // 화면 갱신 시 기존에 그려진 마커 일괄 제거 함수
+        function removeMarkers() {
+            currentMarkers.forEach(function(marker) {
+                marker.setMap(null);
+            });
+            currentMarkers = [];
+        }
+    </script>
+</body>
+</html>
